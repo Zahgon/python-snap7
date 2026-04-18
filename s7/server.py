@@ -36,12 +36,12 @@ class Server:
     @property
     def legacy_server(self) -> LegacyServer:
         """Direct access to the legacy S7 server."""
-        return self._legacy
+        pass
 
     @property
     def s7commplus_server(self) -> S7CommPlusServer:
         """Direct access to the S7CommPlus server."""
-        return self._plus
+        pass
 
     def register_db(
         self,
@@ -59,7 +59,7 @@ class Server:
         Returns:
             The created DataBlock
         """
-        return self._plus.register_db(db_number, variables, size)
+        pass
 
     def register_raw_db(self, db_number: int, data: bytearray) -> DataBlock:
         """Register a raw data block on the S7CommPlus server.
@@ -71,11 +71,11 @@ class Server:
         Returns:
             The created DataBlock
         """
-        return self._plus.register_raw_db(db_number, data)
+        pass
 
     def get_db(self, db_number: int) -> Optional[DataBlock]:
         """Get a registered data block."""
-        return self._plus.get_db(db_number)
+        pass
 
     def start(
         self,

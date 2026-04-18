@@ -124,42 +124,42 @@ class S7CommPlusConnection:
 
     @property
     def connected(self) -> bool:
-        return self._connected
+        pass
 
     @property
     def protocol_version(self) -> int:
         """Protocol version negotiated with the PLC."""
-        return self._protocol_version
+        pass
 
     @property
     def session_id(self) -> int:
         """Session ID assigned by the PLC."""
-        return self._session_id
+        pass
 
     @property
     def tls_active(self) -> bool:
         """Whether TLS encryption is active on this connection."""
-        return self._tls_active
+        pass
 
     @property
     def integrity_id_read(self) -> int:
         """Current read IntegrityId counter (V2+)."""
-        return self._integrity_id_read
+        pass
 
     @property
     def integrity_id_write(self) -> int:
         """Current write IntegrityId counter (V2+)."""
-        return self._integrity_id_write
+        pass
 
     @property
     def session_setup_ok(self) -> bool:
         """Whether the session setup (ServerSessionVersion echo) succeeded."""
-        return self._session_setup_ok
+        pass
 
     @property
     def oms_secret(self) -> Optional[bytes]:
         """OMS exporter secret from TLS session (for legitimation)."""
-        return self._oms_secret
+        pass
 
     def connect(
         self,

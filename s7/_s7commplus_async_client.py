@@ -77,30 +77,30 @@ class S7CommPlusAsyncClient:
 
     @property
     def connected(self) -> bool:
-        return self._connected
+        pass
 
     @property
     def protocol_version(self) -> int:
-        return self._protocol_version
+        pass
 
     @property
     def session_id(self) -> int:
-        return self._session_id
+        pass
 
     @property
     def session_setup_ok(self) -> bool:
         """Whether the S7CommPlus session setup succeeded for data operations."""
-        return self._session_setup_ok
+        pass
 
     @property
     def tls_active(self) -> bool:
         """Whether TLS is active on the connection."""
-        return self._tls_active
+        pass
 
     @property
     def oms_secret(self) -> Optional[bytes]:
         """OMS exporter secret from TLS session (None if TLS not active)."""
-        return self._oms_secret
+        pass
 
     async def connect(
         self,
@@ -407,10 +407,7 @@ class S7CommPlusAsyncClient:
 
     async def db_read_multi(self, items: list[tuple[int, int, int]]) -> list[bytes]:
         """Read multiple data block regions in a single request."""
-        payload = _build_read_payload(items)
-        response = await self._send_request(FunctionCode.GET_MULTI_VARIABLES, payload)
-        parsed = _parse_read_response(response)
-        return [r if r is not None else b"" for r in parsed]
+        pass
 
     async def read_area(self, area_rid: int, start: int, size: int) -> bytes:
         """Read raw bytes from a controller memory area (M, I, Q, counters, timers)."""
@@ -429,42 +426,25 @@ class S7CommPlusAsyncClient:
 
     async def explore(self, explore_id: int = 0) -> bytes:
         """Browse the PLC object tree."""
-        payload = _build_explore_payload(explore_id)
-        return await self._send_request(FunctionCode.EXPLORE, payload)
+        pass
 
     async def set_plc_operating_state(self, state: int) -> None:
         """Set the PLC operating state (start/stop)."""
-        payload = _build_invoke_payload(state)
-        await self._send_request(FunctionCode.INVOKE, payload)
+        pass
 
     async def list_datablocks(self) -> list[dict[str, Any]]:
         """List all datablocks on the PLC via EXPLORE.
 
         .. warning:: This method is **experimental** and may change.
         """
-        payload = _build_explore_request(Ids.NATIVE_THE_PLC_PROGRAM_RID, [Ids.OBJECT_VARIABLE_TYPE_NAME, Ids.BLOCK_BLOCK_NUMBER])
-        response = await self._send_request(FunctionCode.EXPLORE, payload)
-        return _parse_explore_datablocks(response)
+        pass
 
     async def browse(self) -> list[dict[str, Any]]:
         """Browse the PLC symbol table via EXPLORE.
 
         .. warning:: This method is **experimental** and may change.
         """
-        dbs = await self.list_datablocks()
-        variables: list[dict[str, Any]] = []
-        for db_info in dbs:
-            db_rid = db_info.get("rid", 0)
-            if db_rid == 0:
-                continue
-            payload = _build_explore_request(db_rid, [Ids.OBJECT_VARIABLE_TYPE_NAME])
-            try:
-                response = await self._send_request(FunctionCode.EXPLORE, payload)
-                fields = _parse_explore_fields(response, db_info["number"], db_info["name"])
-                variables.extend(fields)
-            except Exception:
-                continue
-        return variables
+        pass
 
     # -- Internal methods --
 

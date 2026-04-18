@@ -55,16 +55,12 @@ class Client:
     @property
     def protocol(self) -> Protocol:
         """The protocol currently in use for DB operations."""
-        return self._protocol
+        pass
 
     @property
     def connected(self) -> bool:
         """Whether the client is connected to a PLC."""
-        if self._legacy is not None and self._legacy.connected:
-            return True
-        if self._plus is not None and self._plus.connected:
-            return True
-        return False
+        pass
 
     def connect(
         self,
@@ -243,11 +239,7 @@ class Client:
 
         Uses S7CommPlus native multi-read when available.
         """
-        if self._protocol == Protocol.S7COMMPLUS and self._plus is not None:
-            return [bytearray(r) for r in self._plus.db_read_multi(items)]
-        if self._legacy is not None:
-            return [self._legacy.db_read(db, start, size) for db, start, size in items]
-        raise RuntimeError("Not connected")
+        pass
 
     def explore(self, explore_id: int = 0) -> bytes:
         """Browse the PLC object tree (S7CommPlus only).
@@ -258,9 +250,7 @@ class Client:
         Raises:
             RuntimeError: If not connected via S7CommPlus.
         """
-        if self._plus is None:
-            raise RuntimeError("explore() requires S7CommPlus connection")
-        return self._plus.explore(explore_id)
+        pass
 
     def list_datablocks(self) -> list[dict[str, Any]]:
         """List all datablocks on the PLC.
@@ -273,14 +263,7 @@ class Client:
         Returns:
             List of dicts with keys ``name``, ``number``, ``rid``.
         """
-        if self._plus is not None:
-            return self._plus.list_datablocks()
-        if self._legacy is not None:
-            from snap7.type import Block
-
-            numbers = self._legacy.list_blocks_of_type(Block.DB, 1024)
-            return [{"name": f"DB{n}", "number": n, "rid": 0} for n in numbers]
-        raise RuntimeError("Not connected")
+        pass
 
     def browse(self) -> list[dict[str, Any]]:
         """Browse the PLC symbol table.
@@ -294,9 +277,7 @@ class Client:
 
         Requires S7CommPlus connection.
         """
-        if self._plus is None:
-            raise RuntimeError("browse() requires S7CommPlus connection")
-        return self._plus.browse()
+        pass
 
     def read_diagnostic_buffer(self) -> list[dict[str, Any]]:
         """Read the PLC diagnostic buffer.
@@ -305,9 +286,7 @@ class Client:
 
         Uses the legacy S7 protocol (SZL read).
         """
-        if self._legacy is None:
-            raise RuntimeError("Not connected")
-        return self._legacy.read_diagnostic_buffer()
+        pass
 
     def create_subscription(self, items: list[tuple[int, int, int]], cycle_ms: int = 0) -> int:
         """Create a data change subscription (S7CommPlus only).
@@ -321,18 +300,14 @@ class Client:
         Returns:
             Subscription ID.
         """
-        if self._plus is None:
-            raise RuntimeError("create_subscription() requires S7CommPlus connection")
-        return self._plus.create_subscription(items, cycle_ms)
+        pass
 
     def delete_subscription(self, subscription_id: int) -> None:
         """Delete a data change subscription (S7CommPlus only).
 
         .. warning:: This method is **experimental** and may change.
         """
-        if self._plus is None:
-            raise RuntimeError("delete_subscription() requires S7CommPlus connection")
-        self._plus.delete_subscription(subscription_id)
+        pass
 
     def upload_block(self, block_type: int, block_number: int) -> bytes:
         """Upload (read) a program block from the PLC.
@@ -342,14 +317,7 @@ class Client:
         Uses S7CommPlus when available, otherwise falls back to legacy
         ``full_upload``.
         """
-        if self._plus is not None:
-            return self._plus.upload_block(block_type, block_number)
-        if self._legacy is not None:
-            from snap7.type import Block
-
-            data, _size = self._legacy.full_upload(Block(block_type), block_number)
-            return bytes(data)
-        raise RuntimeError("Not connected")
+        pass
 
     def download_block(self, block_type: int, block_number: int, data: bytes) -> None:
         """Download (write) a program block to the PLC.
@@ -359,13 +327,7 @@ class Client:
         Uses S7CommPlus when available, otherwise falls back to legacy
         ``download``.
         """
-        if self._plus is not None:
-            self._plus.download_block(block_type, block_number, data)
-            return
-        if self._legacy is not None:
-            self._legacy.download(bytearray(data), block_number)
-            return
-        raise RuntimeError("Not connected")
+        pass
 
     def __getattr__(self, name: str) -> Any:
         """Delegate unknown methods to the legacy client."""

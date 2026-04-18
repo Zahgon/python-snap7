@@ -35,35 +35,27 @@ class S7CommPlusClient:
 
     @property
     def connected(self) -> bool:
-        return self._connection is not None and self._connection.connected
+        pass
 
     @property
     def protocol_version(self) -> int:
         """Protocol version negotiated with the PLC."""
-        if self._connection is None:
-            return 0
-        return self._connection.protocol_version
+        pass
 
     @property
     def session_id(self) -> int:
         """Session ID assigned by the PLC."""
-        if self._connection is None:
-            return 0
-        return self._connection.session_id
+        pass
 
     @property
     def session_setup_ok(self) -> bool:
         """Whether the S7CommPlus session setup succeeded for data operations."""
-        if self._connection is None:
-            return False
-        return self._connection.session_setup_ok
+        pass
 
     @property
     def tls_active(self) -> bool:
         """Whether TLS is active on the connection."""
-        if self._connection is None:
-            return False
-        return self._connection.tls_active
+        pass
 
     def connect(
         self,
@@ -155,13 +147,7 @@ class S7CommPlusClient:
         Returns:
             List of raw bytes for each item
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        payload = _build_read_payload(items)
-        response = self._connection.send_request(FunctionCode.GET_MULTI_VARIABLES, payload)
-        parsed = _parse_read_response(response)
-        return [r if r is not None else b"" for r in parsed]
+        pass
 
     def read_area(self, area_rid: int, start: int, size: int) -> bytes:
         """Read raw bytes from a controller memory area (M, I, Q, counters, timers).
@@ -209,12 +195,7 @@ class S7CommPlusClient:
         Returns:
             Raw response payload.
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        payload = _build_explore_payload(explore_id)
-        response = self._connection.send_request(FunctionCode.EXPLORE, payload)
-        return response
+        pass
 
     def set_plc_operating_state(self, state: int) -> None:
         """Set the PLC operating state (start/stop).
@@ -225,11 +206,7 @@ class S7CommPlusClient:
             state: Target operating state.
                 1 = STOP, 2 = RUN, 3 = HOT_RESTART.
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        payload = _build_invoke_payload(state)
-        self._connection.send_request(FunctionCode.INVOKE, payload)
+        pass
 
     def get_cpu_state(self) -> str:
         """Get PLC CPU operating state via S7CommPlus.
@@ -261,24 +238,7 @@ class S7CommPlusClient:
         Returns:
             Raw block data.
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        # Use GET_VAR_SUBSTREAMED to read block content
-        payload = bytearray()
-        payload += struct.pack(">I", self._connection.session_id)
-        payload += encode_uint32_vlq(1)  # item count
-        payload += encode_uint32_vlq(1)  # field count
-        payload += encode_uint32_vlq(block_type)
-        payload += encode_uint32_vlq(block_number)
-        payload += struct.pack(">I", 0)
-
-        response = self._connection.send_request(FunctionCode.GET_VAR_SUBSTREAMED, bytes(payload))
-        # Skip return code VLQ
-        offset = 0
-        _, consumed = decode_uint32_vlq(response, offset)
-        offset += consumed
-        return response[offset:]
+        pass
 
     def download_block(self, block_type: int, block_number: int, data: bytes) -> None:
         """Download (write) a program block to the PLC.
@@ -290,20 +250,7 @@ class S7CommPlusClient:
             block_number: Block number.
             data: Raw block data to write.
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        from .codec import encode_pvalue_blob
-
-        payload = bytearray()
-        payload += struct.pack(">I", self._connection.session_id)
-        payload += encode_uint32_vlq(1)
-        payload += encode_uint32_vlq(block_type)
-        payload += encode_uint32_vlq(block_number)
-        payload += encode_pvalue_blob(data)
-        payload += struct.pack(">I", 0)
-
-        self._connection.send_request(FunctionCode.SET_VAR_SUBSTREAMED, bytes(payload))
+        pass
 
     def list_datablocks(self) -> list[dict[str, Any]]:
         """List all datablocks on the PLC via EXPLORE.
@@ -313,12 +260,7 @@ class S7CommPlusClient:
         Returns:
             List of dicts with keys ``name``, ``number``, ``rid``.
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        payload = _build_explore_request(Ids.NATIVE_THE_PLC_PROGRAM_RID, [Ids.OBJECT_VARIABLE_TYPE_NAME, Ids.BLOCK_BLOCK_NUMBER])
-        response = self._connection.send_request(FunctionCode.EXPLORE, payload)
-        return _parse_explore_datablocks(response)
+        pass
 
     def browse(self) -> list[dict[str, Any]]:
         """Browse the PLC symbol table via EXPLORE.
@@ -332,28 +274,7 @@ class S7CommPlusClient:
         Returns:
             List of variable info dicts.
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        # Step 1: list datablocks
-        dbs = self.list_datablocks()
-
-        # Step 2: for each DB, explore its type info to get field layout
-        variables: list[dict[str, Any]] = []
-        for db_info in dbs:
-            db_rid = db_info.get("rid", 0)
-            if db_rid == 0:
-                continue
-            payload = _build_explore_request(db_rid, [Ids.OBJECT_VARIABLE_TYPE_NAME])
-            try:
-                response = self._connection.send_request(FunctionCode.EXPLORE, payload)
-                fields = _parse_explore_fields(response, db_info["number"], db_info["name"])
-                variables.extend(fields)
-            except Exception:
-                logger.debug(f"Failed to explore DB {db_info['name']} (rid={db_rid:#x})")
-                continue
-
-        return variables
+        pass
 
     def create_subscription(self, items: list[tuple[int, int, int]], cycle_ms: int = 0) -> int:
         """Create a data change subscription.
@@ -370,16 +291,7 @@ class S7CommPlusClient:
         Returns:
             Subscription object ID assigned by the PLC.
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        payload = _build_subscription_request(items, cycle_ms, self._connection.session_id)
-        response = self._connection.send_request(FunctionCode.CREATE_OBJECT, payload)
-
-        # Parse the CreateObject response to get the subscription object ID
-        sub_id, consumed = decode_uint32_vlq(response, 0)
-        logger.info(f"Subscription created, id={sub_id:#x}")
-        return sub_id
+        pass
 
     def delete_subscription(self, subscription_id: int) -> None:
         """Delete a data change subscription.
@@ -389,12 +301,7 @@ class S7CommPlusClient:
         Args:
             subscription_id: ID returned by :meth:`create_subscription`.
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        payload = struct.pack(">I", subscription_id) + struct.pack(">I", 0)
-        self._connection.send_request(FunctionCode.DELETE_OBJECT, payload)
-        logger.info(f"Subscription {subscription_id:#x} deleted")
+        pass
 
     def __enter__(self) -> "S7CommPlusClient":
         return self
@@ -867,63 +774,4 @@ def _build_subscription_request(items: list[tuple[int, int, int]], cycle_ms: int
     Returns:
         CREATE_OBJECT payload.
     """
-    payload = bytearray()
-
-    # Session container
-    payload += struct.pack(">I", session_id)
-    payload += bytes([0x00, DataType.UDINT])
-    payload += encode_uint32_vlq(0)
-    payload += struct.pack(">I", 0)
-
-    # Start subscription object
-    payload += bytes([ElementID.START_OF_OBJECT])
-    payload += struct.pack(">I", ObjectId.GET_NEW_RID_ON_SERVER)
-    payload += encode_uint32_vlq(Ids.CLASS_SUBSCRIPTION)
-    payload += encode_uint32_vlq(0)
-    payload += encode_uint32_vlq(0)
-
-    # Subscription attributes
-    payload += bytes([ElementID.ATTRIBUTE])
-    payload += encode_uint32_vlq(Ids.OBJECT_VARIABLE_TYPE_NAME)
-    payload += bytes([0x00, DataType.WSTRING])
-    name = f"PySub_{_SUBSCRIPTION_RELATION_ID:#x}".encode("utf-8")
-    payload += encode_uint32_vlq(len(name))
-    payload += name
-
-    payload += bytes([ElementID.ATTRIBUTE])
-    payload += encode_uint32_vlq(Ids.SUBSCRIPTION_FUNCTION_CLASS_ID)
-    payload += bytes([0x00, DataType.USINT])
-    payload += bytes([0x02])
-
-    payload += bytes([ElementID.ATTRIBUTE])
-    payload += encode_uint32_vlq(Ids.SUBSCRIPTION_ACTIVE)
-    payload += bytes([0x00, DataType.BOOL])
-    payload += bytes([0x01])
-
-    payload += bytes([ElementID.ATTRIBUTE])
-    payload += encode_uint32_vlq(Ids.SUBSCRIPTION_CYCLE_TIME)
-    payload += bytes([0x00, DataType.UDINT])
-    payload += encode_uint32_vlq(cycle_ms)
-
-    payload += bytes([ElementID.ATTRIBUTE])
-    payload += encode_uint32_vlq(Ids.SUBSCRIPTION_CREDIT_LIMIT)
-    payload += bytes([0x00, DataType.INT])
-    payload += struct.pack(">h", 10)  # 10 credits
-
-    # Build reference list from items
-    ref_list = bytearray()
-    for db_number, start, size in items:
-        access_area = Ids.DB_ACCESS_AREA_BASE + (db_number & 0xFFFF)
-        ref_list += struct.pack(">I", access_area)
-
-    payload += bytes([ElementID.ATTRIBUTE])
-    payload += encode_uint32_vlq(Ids.SUBSCRIPTION_REFERENCE_LIST)
-    payload += bytes([0x10, DataType.UDINT])  # 0x10 = array
-    payload += encode_uint32_vlq(len(items))
-    payload += ref_list
-
-    # Close subscription object
-    payload += bytes([ElementID.TERMINATING_OBJECT])
-    payload += struct.pack(">I", 0)
-
-    return bytes(payload)
+    pass

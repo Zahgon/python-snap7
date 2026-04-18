@@ -54,16 +54,12 @@ class AsyncClient:
     @property
     def protocol(self) -> Protocol:
         """The protocol currently in use for DB operations."""
-        return self._protocol
+        pass
 
     @property
     def connected(self) -> bool:
         """Whether the client is connected to a PLC."""
-        if self._legacy is not None and self._legacy.connected:
-            return True
-        if self._plus is not None and self._plus.connected:
-            return True
-        return False
+        pass
 
     async def connect(
         self,
@@ -213,14 +209,7 @@ class AsyncClient:
 
     async def db_read_multi(self, items: list[tuple[int, int, int]]) -> list[bytearray]:
         """Read multiple data block regions in a single request."""
-        if self._protocol == Protocol.S7COMMPLUS and self._plus is not None:
-            return [bytearray(r) for r in await self._plus.db_read_multi(items)]
-        if self._legacy is not None:
-            results = []
-            for db, start, size in items:
-                results.append(await self._legacy.db_read(db, start, size))
-            return results
-        raise RuntimeError("Not connected")
+        pass
 
     async def explore(self) -> bytes:
         """Browse the PLC object tree (S7CommPlus only).
@@ -228,9 +217,7 @@ class AsyncClient:
         Raises:
             RuntimeError: If not connected via S7CommPlus.
         """
-        if self._plus is None:
-            raise RuntimeError("explore() requires S7CommPlus connection")
-        return await self._plus.explore()
+        pass
 
     def __getattr__(self, name: str) -> Any:
         """Delegate unknown methods to the legacy client."""

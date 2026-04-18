@@ -143,12 +143,11 @@ class LegitimationState:
 
     @property
     def authenticated(self) -> bool:
-        return self._authenticated
+        pass
 
     def mark_authenticated(self) -> None:
-        self._authenticated = True
+        pass
 
     def rotate_key(self) -> None:
         """Rotate the OMS-derived key (called after each legitimation)."""
-        if self._oms_key:
-            self._oms_key = hashlib.sha256(self._oms_key).digest()
+        pass
