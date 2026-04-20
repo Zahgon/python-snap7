@@ -94,54 +94,7 @@ class Client:
         Returns:
             self, for method chaining.
         """
-        self._host = address
-        self._port = tcp_port
-        self._rack = rack
-        self._slot = slot
-
-        if protocol in (Protocol.AUTO, Protocol.S7COMMPLUS):
-            if self._try_s7commplus(
-                address,
-                tcp_port,
-                rack,
-                slot,
-                use_tls=use_tls,
-                tls_cert=tls_cert,
-                tls_key=tls_key,
-                tls_ca=tls_ca,
-                password=password,
-            ):
-                self._protocol = Protocol.S7COMMPLUS
-                logger.info(f"Connected to {address}:{tcp_port} using S7CommPlus")
-            else:
-                if protocol == Protocol.S7COMMPLUS:
-                    raise RuntimeError(
-                        f"S7CommPlus connection to {address}:{tcp_port} failed and protocol=S7COMMPLUS was explicitly requested"
-                    )
-                self._protocol = Protocol.LEGACY
-                logger.info(f"S7CommPlus not available, using legacy S7 for {address}:{tcp_port}")
-        else:
-            self._protocol = Protocol.LEGACY
-
-        # Connect legacy client for block ops, PLC control, etc.
-        # Skip when S7CommPlus was explicitly requested — the target may not
-        # support legacy S7 (e.g. PUT/GET disabled) or use a different port
-        # (e.g. test emulators).
-        if self._protocol != Protocol.S7COMMPLUS:
-            self._legacy = LegacyClient()
-            self._legacy.connect(address, rack, slot, tcp_port)
-            logger.info(f"Legacy S7 connected to {address}:{tcp_port}")
-        elif protocol == Protocol.AUTO:
-            # AUTO mode with S7CommPlus: also try legacy for block ops
-            try:
-                self._legacy = LegacyClient()
-                self._legacy.connect(address, rack, slot, tcp_port)
-                logger.info(f"Legacy S7 connected to {address}:{tcp_port}")
-            except Exception as e:
-                logger.debug(f"Legacy S7 connection failed (S7CommPlus available): {e}")
-                self._legacy = None
-
-        return self
+        pass
 
     def _try_s7commplus(
         self,
@@ -160,30 +113,7 @@ class Client:
 
         Returns True if S7CommPlus data operations are available.
         """
-        plus = S7CommPlusClient()
-        try:
-            plus.connect(
-                host=address,
-                port=tcp_port,
-                rack=rack,
-                slot=slot,
-                use_tls=use_tls,
-                tls_cert=tls_cert,
-                tls_key=tls_key,
-                tls_ca=tls_ca,
-                password=password,
-            )
-        except Exception as e:
-            logger.debug(f"S7CommPlus connection failed: {e}")
-            return False
-
-        if not plus.session_setup_ok:
-            logger.debug("S7CommPlus session setup not OK, disconnecting")
-            plus.disconnect()
-            return False
-
-        self._plus = plus
-        return True
+        pass
 
     def disconnect(self) -> int:
         """Disconnect from PLC.
@@ -191,33 +121,14 @@ class Client:
         Returns:
             0 on success (matches snap7.Client).
         """
-        if self._plus is not None:
-            try:
-                self._plus.disconnect()
-            except Exception:
-                pass
-            self._plus = None
-
-        if self._legacy is not None:
-            try:
-                self._legacy.disconnect()
-            except Exception:
-                pass
-            self._legacy = None
-
-        self._protocol = Protocol.AUTO
-        return 0
+        pass
 
     def db_read(self, db_number: int, start: int, size: int) -> bytearray:
         """Read raw bytes from a data block.
 
         Uses S7CommPlus when available, otherwise legacy S7.
         """
-        if self._protocol == Protocol.S7COMMPLUS and self._plus is not None:
-            return bytearray(self._plus.db_read(db_number, start, size))
-        if self._legacy is not None:
-            return self._legacy.db_read(db_number, start, size)
-        raise RuntimeError("Not connected")
+        pass
 
     def db_write(self, db_number: int, start: int, data: bytearray) -> int:
         """Write raw bytes to a data block.
@@ -227,12 +138,7 @@ class Client:
         Returns:
             0 on success (matches snap7.Client).
         """
-        if self._protocol == Protocol.S7COMMPLUS and self._plus is not None:
-            self._plus.db_write(db_number, start, bytes(data))
-            return 0
-        if self._legacy is not None:
-            return self._legacy.db_write(db_number, start, data)
-        raise RuntimeError("Not connected")
+        pass
 
     def db_read_multi(self, items: list[tuple[int, int, int]]) -> list[bytearray]:
         """Read multiple data block regions in a single request.

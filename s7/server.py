@@ -96,28 +96,11 @@ class Server:
             tls_cert: Path to TLS certificate (PEM).
             tls_key: Path to TLS private key (PEM).
         """
-        self._legacy.start(tcp_port=tcp_port)
-        logger.info(f"Legacy S7 server started on port {tcp_port}")
-
-        if s7commplus_port is not None:
-            self._plus.start(
-                port=s7commplus_port,
-                use_tls=use_tls,
-                tls_cert=tls_cert,
-                tls_key=tls_key,
-            )
-            logger.info(f"S7CommPlus server started on port {s7commplus_port}")
+        pass
 
     def stop(self) -> None:
         """Stop all servers."""
-        try:
-            self._plus.stop()
-        except Exception:
-            pass
-        try:
-            self._legacy.stop()
-        except Exception:
-            pass
+        pass
 
     def __getattr__(self, name: str) -> Any:
         """Delegate unknown methods to the legacy server."""

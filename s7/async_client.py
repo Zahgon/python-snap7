@@ -91,40 +91,7 @@ class AsyncClient:
         Returns:
             self, for method chaining.
         """
-        self._host = address
-        self._port = tcp_port
-        self._rack = rack
-        self._slot = slot
-
-        if protocol in (Protocol.AUTO, Protocol.S7COMMPLUS):
-            if await self._try_s7commplus(
-                address,
-                tcp_port,
-                rack,
-                slot,
-                use_tls=use_tls,
-                tls_cert=tls_cert,
-                tls_key=tls_key,
-                tls_ca=tls_ca,
-            ):
-                self._protocol = Protocol.S7COMMPLUS
-                logger.info(f"Async connected to {address}:{tcp_port} using S7CommPlus")
-            else:
-                if protocol == Protocol.S7COMMPLUS:
-                    raise RuntimeError(
-                        f"S7CommPlus connection to {address}:{tcp_port} failed and protocol=S7COMMPLUS was explicitly requested"
-                    )
-                self._protocol = Protocol.LEGACY
-                logger.info(f"S7CommPlus not available, using legacy S7 for {address}:{tcp_port}")
-        else:
-            self._protocol = Protocol.LEGACY
-
-        # Always connect legacy client
-        self._legacy = LegacyAsyncClient()
-        await self._legacy.connect(address, rack, slot, tcp_port)
-        logger.info(f"Async legacy S7 connected to {address}:{tcp_port}")
-
-        return self
+        pass
 
     async def _try_s7commplus(
         self,
@@ -139,29 +106,7 @@ class AsyncClient:
         tls_ca: Optional[str] = None,
     ) -> bool:
         """Try to establish an S7CommPlus connection."""
-        plus = S7CommPlusAsyncClient()
-        try:
-            await plus.connect(
-                host=address,
-                port=tcp_port,
-                rack=rack,
-                slot=slot,
-                use_tls=use_tls,
-                tls_cert=tls_cert,
-                tls_key=tls_key,
-                tls_ca=tls_ca,
-            )
-        except Exception as e:
-            logger.debug(f"S7CommPlus connection failed: {e}")
-            return False
-
-        if not plus.session_setup_ok:
-            logger.debug("S7CommPlus session setup not OK, disconnecting")
-            await plus.disconnect()
-            return False
-
-        self._plus = plus
-        return True
+        pass
 
     async def disconnect(self) -> int:
         """Disconnect from PLC.
@@ -169,30 +114,11 @@ class AsyncClient:
         Returns:
             0 on success (matches snap7.AsyncClient).
         """
-        if self._plus is not None:
-            try:
-                await self._plus.disconnect()
-            except Exception:
-                pass
-            self._plus = None
-
-        if self._legacy is not None:
-            try:
-                await self._legacy.disconnect()
-            except Exception:
-                pass
-            self._legacy = None
-
-        self._protocol = Protocol.AUTO
-        return 0
+        pass
 
     async def db_read(self, db_number: int, start: int, size: int) -> bytearray:
         """Read raw bytes from a data block."""
-        if self._protocol == Protocol.S7COMMPLUS and self._plus is not None:
-            return bytearray(await self._plus.db_read(db_number, start, size))
-        if self._legacy is not None:
-            return await self._legacy.db_read(db_number, start, size)
-        raise RuntimeError("Not connected")
+        pass
 
     async def db_write(self, db_number: int, start: int, data: bytearray) -> int:
         """Write raw bytes to a data block.
@@ -200,12 +126,7 @@ class AsyncClient:
         Returns:
             0 on success (matches snap7.AsyncClient).
         """
-        if self._protocol == Protocol.S7COMMPLUS and self._plus is not None:
-            await self._plus.db_write(db_number, start, bytes(data))
-            return 0
-        if self._legacy is not None:
-            return await self._legacy.db_write(db_number, start, data)
-        raise RuntimeError("Not connected")
+        pass
 
     async def db_read_multi(self, items: list[tuple[int, int, int]]) -> list[bytearray]:
         """Read multiple data block regions in a single request."""

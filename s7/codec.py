@@ -96,18 +96,7 @@ def encode_request_header(
     Returns:
         14-byte request header
     """
-    from .protocol import Opcode
-
-    return struct.pack(
-        ">BHHHHIB",
-        Opcode.REQUEST,
-        0x0000,  # Reserved
-        function_code,
-        0x0000,  # Reserved
-        sequence_number,
-        session_id,
-        transport_flags,
-    )
+    pass
 
 
 def decode_response_header(data: bytes, offset: int = 0) -> dict[str, Any]:
@@ -121,96 +110,82 @@ def decode_response_header(data: bytes, offset: int = 0) -> dict[str, Any]:
         Dictionary with opcode, function_code, sequence_number, session_id,
         transport_flags, and bytes_consumed
     """
-    if len(data) - offset < 14:
-        raise ValueError("Not enough data for S7CommPlus response header")
-
-    opcode, reserved1, function_code, reserved2, seq_num, session_id, transport_flags = struct.unpack_from(
-        ">BHHHHIB", data, offset
-    )
-
-    return {
-        "opcode": opcode,
-        "function_code": function_code,
-        "sequence_number": seq_num,
-        "session_id": session_id,
-        "transport_flags": transport_flags,
-        "bytes_consumed": 14,
-    }
+    pass
 
 
 # -- Fixed-width encoding (big-endian) --
 
 
 def encode_uint8(value: int) -> bytes:
-    return struct.pack(">B", value)
+    pass
 
 
 def decode_uint8(data: bytes, offset: int = 0) -> tuple[int, int]:
-    return struct.unpack_from(">B", data, offset)[0], 1
+    pass
 
 
 def encode_uint16(value: int) -> bytes:
-    return struct.pack(">H", value)
+    pass
 
 
 def decode_uint16(data: bytes, offset: int = 0) -> tuple[int, int]:
-    return struct.unpack_from(">H", data, offset)[0], 2
+    pass
 
 
 def encode_uint32(value: int) -> bytes:
-    return struct.pack(">I", value)
+    pass
 
 
 def decode_uint32(data: bytes, offset: int = 0) -> tuple[int, int]:
-    return struct.unpack_from(">I", data, offset)[0], 4
+    pass
 
 
 def encode_uint64(value: int) -> bytes:
-    return struct.pack(">Q", value)
+    pass
 
 
 def decode_uint64(data: bytes, offset: int = 0) -> tuple[int, int]:
-    return struct.unpack_from(">Q", data, offset)[0], 8
+    pass
 
 
 def encode_int16(value: int) -> bytes:
-    return struct.pack(">h", value)
+    pass
 
 
 def decode_int16(data: bytes, offset: int = 0) -> tuple[int, int]:
-    return struct.unpack_from(">h", data, offset)[0], 2
+    pass
 
 
 def encode_int32(value: int) -> bytes:
-    return struct.pack(">i", value)
+    pass
 
 
 def decode_int32(data: bytes, offset: int = 0) -> tuple[int, int]:
-    return struct.unpack_from(">i", data, offset)[0], 4
+    pass
 
 
 def encode_int64(value: int) -> bytes:
-    return struct.pack(">q", value)
+    pass
 
 
 def decode_int64(data: bytes, offset: int = 0) -> tuple[int, int]:
-    return struct.unpack_from(">q", data, offset)[0], 8
+    pass
 
 
 def encode_float32(value: float) -> bytes:
-    return struct.pack(">f", value)
+    pass
 
 
 def decode_float32(data: bytes, offset: int = 0) -> tuple[float, int]:
-    return struct.unpack_from(">f", data, offset)[0], 4
+    pass
 
 
 def encode_float64(value: float) -> bytes:
-    return struct.pack(">d", value)
+    pass
 
 
 def decode_float64(data: bytes, offset: int = 0) -> tuple[float, int]:
-    return struct.unpack_from(">d", data, offset)[0], 8
+    pass
 
 
 # -- String encoding --
@@ -218,7 +193,7 @@ def decode_float64(data: bytes, offset: int = 0) -> tuple[float, int]:
 
 def encode_wstring(value: str) -> bytes:
     """Encode a string as UTF-8 (S7CommPlus WString wire format)."""
-    return value.encode("utf-8")
+    pass
 
 
 def decode_wstring(data: bytes, offset: int, length: int) -> tuple[str, int]:
@@ -232,7 +207,7 @@ def decode_wstring(data: bytes, offset: int, length: int) -> tuple[str, int]:
     Returns:
         Tuple of (decoded_string, bytes_consumed)
     """
-    return data[offset : offset + length].decode("utf-8"), length
+    pass
 
 
 # -- Typed value encoding --

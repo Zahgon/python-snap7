@@ -64,16 +64,7 @@ logger = logging.getLogger(__name__)
 
 def _element_size(datatype: int) -> int:
     """Return the fixed byte size for an array element, or 0 for variable-length."""
-    if datatype in (DataType.BOOL, DataType.USINT, DataType.BYTE, DataType.SINT):
-        return 1
-    elif datatype in (DataType.UINT, DataType.WORD, DataType.INT):
-        return 2
-    elif datatype in (DataType.REAL, DataType.RID):
-        return 4
-    elif datatype in (DataType.LREAL, DataType.TIMESTAMP):
-        return 8
-    else:
-        return 0
+    pass
 
 
 class S7CommPlusConnection:
@@ -186,56 +177,7 @@ class S7CommPlusConnection:
             tls_key: Path to client private key (PEM)
             tls_ca: Path to CA certificate for PLC verification (PEM)
         """
-        try:
-            # Step 1: COTP connection (same TSAP for all S7CommPlus versions)
-            self._iso_conn.connect(timeout)
-
-            # Step 2: InitSSL handshake (required before CreateObject)
-            self._init_ssl()
-
-            # Step 3: TLS activation (between InitSSL and CreateObject)
-            if use_tls:
-                self._activate_tls(tls_cert=tls_cert, tls_key=tls_key, tls_ca=tls_ca)
-
-            # Step 4: CreateObject (S7CommPlus session setup)
-            # CreateObject always uses V1 framing
-            self._create_session()
-
-            # Step 5: Session setup - echo ServerSessionVersion back to PLC
-            if self._server_session_version is not None:
-                self._session_setup_ok = self._setup_session()
-            else:
-                logger.warning("PLC did not provide ServerSessionVersion - session setup incomplete")
-                self._session_setup_ok = False
-
-            # Step 6: Version-specific post-setup
-            if self._protocol_version >= ProtocolVersion.V3:
-                if not use_tls:
-                    logger.warning(
-                        "PLC reports V3 protocol but TLS is not enabled. Connection may not work without use_tls=True."
-                    )
-            elif self._protocol_version == ProtocolVersion.V2:
-                if not self._tls_active:
-                    from snap7.error import S7ConnectionError
-
-                    raise S7ConnectionError("PLC reports V2 protocol but TLS is not active. V2 requires TLS. Use use_tls=True.")
-                # Enable IntegrityId tracking for V2+
-                self._with_integrity_id = True
-                self._integrity_id_read = 0
-                self._integrity_id_write = 0
-                logger.info("V2 IntegrityId tracking enabled")
-
-            # V1: No further authentication needed after CreateObject
-            self._connected = True
-            logger.info(
-                f"S7CommPlus connected to {self.host}:{self.port}, "
-                f"version=V{self._protocol_version}, session={self._session_id}, "
-                f"tls={self._tls_active}"
-            )
-
-        except Exception:
-            self.disconnect()
-            raise
+        pass
 
     def authenticate(self, password: str, username: str = "") -> None:
         """Perform PLC password authentication (legitimation).
@@ -253,38 +195,7 @@ class S7CommPlusConnection:
         Raises:
             S7ConnectionError: If not connected, TLS not active, or auth fails
         """
-        if not self._connected:
-            from snap7.error import S7ConnectionError
-
-            raise S7ConnectionError("Not connected")
-
-        if not self._tls_active or self._oms_secret is None:
-            from snap7.error import S7ConnectionError
-
-            raise S7ConnectionError("Legitimation requires TLS. Connect with use_tls=True.")
-
-        # Step 1: Get challenge from PLC via GetVarSubStreamed
-        challenge = self._get_legitimation_challenge()
-        logger.info(f"Received legitimation challenge ({len(challenge)} bytes)")
-
-        # Step 2: Build response (auto-detect legacy vs new)
-        from .legitimation import build_legacy_response, build_new_response
-
-        if username:
-            # New-style auth with username always uses AES-256-CBC
-            response_data = build_new_response(password, challenge, self._oms_secret, username)
-            self._send_legitimation_new(response_data)
-        else:
-            # Try new-style first, fall back to legacy SHA-1 XOR
-            try:
-                response_data = build_new_response(password, challenge, self._oms_secret, "")
-                self._send_legitimation_new(response_data)
-            except NotImplementedError:
-                # cryptography package not available, use legacy
-                response_data = build_legacy_response(password, challenge)
-                self._send_legitimation_legacy(response_data)
-
-        logger.info("PLC legitimation completed successfully")
+        pass
 
     def _get_legitimation_challenge(self) -> bytes:
         """Request legitimation challenge from PLC.
@@ -294,140 +205,25 @@ class S7CommPlusConnection:
         Returns:
             Challenge bytes from PLC (typically 20 bytes)
         """
-        from .protocol import LegitimationId
-
-        # Build GetVarSubStreamed request
-        payload = bytearray()
-        # InObjectId = session ID
-        payload += struct.pack(">I", self._session_id)
-        # Item count = 1
-        payload += encode_uint32_vlq(1)
-        # Address field count = 1
-        payload += encode_uint32_vlq(1)
-        # Address = ServerSessionRequest (303)
-        payload += encode_uint32_vlq(LegitimationId.SERVER_SESSION_REQUEST)
-        # Trailing padding
-        payload += struct.pack(">I", 0)
-
-        resp_payload = self.send_request(FunctionCode.GET_VAR_SUBSTREAMED, bytes(payload))
-
-        # Parse response: return value + value list
-        offset = 0
-        return_value, consumed = decode_uint64_vlq(resp_payload, offset)
-        offset += consumed
-
-        if return_value != 0:
-            from snap7.error import S7ConnectionError
-
-            raise S7ConnectionError(f"GetVarSubStreamed for challenge failed: return_value={return_value}")
-
-        # Value is a USIntArray (BLOB) - read flags + type + length + data
-        if offset + 2 > len(resp_payload):
-            from snap7.error import S7ConnectionError
-
-            raise S7ConnectionError("Challenge response too short")
-
-        _flags = resp_payload[offset]
-        datatype = resp_payload[offset + 1]
-        offset += 2
-
-        from .protocol import DataType
-
-        if datatype == DataType.BLOB:
-            length, consumed = decode_uint32_vlq(resp_payload, offset)
-            offset += consumed
-            return bytes(resp_payload[offset : offset + length])
-        else:
-            # Try reading as array of USINT
-            count, consumed = decode_uint32_vlq(resp_payload, offset)
-            offset += consumed
-            return bytes(resp_payload[offset : offset + count])
+        pass
 
     def _send_legitimation_new(self, encrypted_response: bytes) -> None:
         """Send new-style legitimation response (AES-256-CBC encrypted).
 
         Uses SetVariable with address Legitimate (1846).
         """
-        from .protocol import LegitimationId, DataType
-
-        payload = bytearray()
-        # InObjectId = session ID
-        payload += struct.pack(">I", self._session_id)
-        # Address field count = 1
-        payload += encode_uint32_vlq(1)
-        # Address = Legitimate (1846)
-        payload += encode_uint32_vlq(LegitimationId.LEGITIMATE)
-        # Value: BLOB(0, encrypted_response)
-        payload += bytes([0x00, DataType.BLOB])
-        payload += encode_uint32_vlq(len(encrypted_response))
-        payload += encrypted_response
-        # Trailing padding
-        payload += struct.pack(">I", 0)
-
-        resp_payload = self.send_request(FunctionCode.SET_VARIABLE, bytes(payload))
-
-        # Check return value
-        if len(resp_payload) >= 1:
-            return_value, _ = decode_uint64_vlq(resp_payload, 0)
-            if return_value < 0:
-                from snap7.error import S7ConnectionError
-
-                raise S7ConnectionError(f"Legitimation rejected by PLC: return_value={return_value}")
-            logger.debug(f"New legitimation return_value={return_value}")
+        pass
 
     def _send_legitimation_legacy(self, response: bytes) -> None:
         """Send legacy legitimation response (SHA-1 XOR).
 
         Uses SetVariable with address ServerSessionResponse (304).
         """
-        from .protocol import LegitimationId, DataType
-
-        payload = bytearray()
-        # InObjectId = session ID
-        payload += struct.pack(">I", self._session_id)
-        # Address field count = 1
-        payload += encode_uint32_vlq(1)
-        # Address = ServerSessionResponse (304)
-        payload += encode_uint32_vlq(LegitimationId.SERVER_SESSION_RESPONSE)
-        # Value: array of USINT (the XOR'd response bytes)
-        payload += bytes([0x10, DataType.USINT])  # flags=0x10 (array)
-        payload += encode_uint32_vlq(len(response))
-        payload += response
-        # Trailing padding
-        payload += struct.pack(">I", 0)
-
-        resp_payload = self.send_request(FunctionCode.SET_VARIABLE, bytes(payload))
-
-        # Check return value
-        if len(resp_payload) >= 1:
-            return_value, _ = decode_uint64_vlq(resp_payload, 0)
-            if return_value < 0:
-                from snap7.error import S7ConnectionError
-
-                raise S7ConnectionError(f"Legacy legitimation rejected by PLC: return_value={return_value}")
-            logger.debug(f"Legacy legitimation return_value={return_value}")
+        pass
 
     def disconnect(self) -> None:
         """Disconnect from PLC."""
-        if self._connected and self._session_id:
-            try:
-                self._delete_session()
-            except Exception:
-                pass
-
-        self._connected = False
-        self._session_setup_ok = False
-        self._tls_active = False
-        self._ssl_socket = None
-        self._oms_secret = None
-        self._session_id = 0
-        self._sequence_number = 0
-        self._protocol_version = 0
-        self._server_session_version = None
-        self._with_integrity_id = False
-        self._integrity_id_read = 0
-        self._integrity_id_write = 0
-        self._iso_conn.disconnect()
+        pass
 
     def send_request(self, function_code: int, payload: bytes = b"") -> bytes:
         """Send an S7CommPlus request and receive the response.
@@ -443,105 +239,7 @@ class S7CommPlusConnection:
         Returns:
             Response payload (after the 14-byte response header)
         """
-        if not self._connected:
-            from snap7.error import S7ConnectionError
-
-            raise S7ConnectionError("Not connected")
-
-        seq_num = self._next_sequence_number()
-
-        # Build request header (14 bytes)
-        request_header = struct.pack(
-            ">BHHHHIB",
-            Opcode.REQUEST,
-            0x0000,  # Reserved
-            function_code,
-            0x0000,  # Reserved
-            seq_num,
-            self._session_id,
-            0x36,  # Transport flags
-        )
-
-        # For V2+ with IntegrityId enabled, insert IntegrityId after header
-        integrity_id_bytes = b""
-        if self._with_integrity_id and self._protocol_version >= ProtocolVersion.V2:
-            is_read = function_code in READ_FUNCTION_CODES
-            if is_read:
-                integrity_id = self._integrity_id_read
-            else:
-                integrity_id = self._integrity_id_write
-            integrity_id_bytes = encode_uint32_vlq(integrity_id)
-            logger.debug(f"  IntegrityId: {'read' if is_read else 'write'}={integrity_id}")
-
-        request = request_header + integrity_id_bytes + payload
-
-        logger.debug(f"=== SEND REQUEST === function_code=0x{function_code:04X} seq={seq_num} session=0x{self._session_id:08X}")
-        logger.debug(f"  Request header (14 bytes): {request_header.hex(' ')}")
-        if integrity_id_bytes:
-            logger.debug(f"  IntegrityId ({len(integrity_id_bytes)} bytes): {integrity_id_bytes.hex(' ')}")
-        logger.debug(f"  Request payload ({len(payload)} bytes): {payload.hex(' ')}")
-
-        # Determine frame version: V2 data PDUs use V2, but CreateObject uses V1
-        frame_version = self._protocol_version
-
-        # Add S7CommPlus frame header and trailer, then send
-        frame = encode_header(frame_version, len(request)) + request
-        frame += struct.pack(">BBH", 0x72, frame_version, 0x0000)
-
-        logger.debug(f"  Full frame ({len(frame)} bytes): {frame.hex(' ')}")
-        self._iso_conn.send_data(frame)
-
-        # Increment the appropriate IntegrityId counter after sending
-        if self._with_integrity_id and self._protocol_version >= ProtocolVersion.V2:
-            if function_code in READ_FUNCTION_CODES:
-                self._integrity_id_read = (self._integrity_id_read + 1) & 0xFFFFFFFF
-            else:
-                self._integrity_id_write = (self._integrity_id_write + 1) & 0xFFFFFFFF
-
-        # Receive response
-        response_frame = self._iso_conn.receive_data()
-        logger.debug(f"=== RECV RESPONSE === raw frame ({len(response_frame)} bytes): {response_frame.hex(' ')}")
-
-        # Parse frame header, use data_length to exclude trailer
-        version, data_length, consumed = decode_header(response_frame)
-        logger.debug(f"  Frame header: version=V{version}, data_length={data_length}, header_size={consumed}")
-
-        response = response_frame[consumed : consumed + data_length]
-        logger.debug(f"  Response data ({len(response)} bytes): {response.hex(' ')}")
-
-        if len(response) < 14:
-            from snap7.error import S7ConnectionError
-
-            raise S7ConnectionError("Response too short")
-
-        # Parse response header for debug
-        resp_opcode = response[0]
-        resp_func = struct.unpack_from(">H", response, 3)[0]
-        resp_seq = struct.unpack_from(">H", response, 7)[0]
-        resp_session = struct.unpack_from(">I", response, 9)[0]
-        resp_transport = response[13]
-        logger.debug(
-            f"  Response header: opcode=0x{resp_opcode:02X} function=0x{resp_func:04X} "
-            f"seq={resp_seq} session=0x{resp_session:08X} transport=0x{resp_transport:02X}"
-        )
-
-        # For V2+ responses, skip IntegrityId in response before returning payload
-        resp_offset = 14
-        if self._with_integrity_id and self._protocol_version >= ProtocolVersion.V2:
-            if resp_offset < len(response):
-                resp_integrity_id, iid_consumed = decode_uint32_vlq(response, resp_offset)
-                resp_offset += iid_consumed
-                logger.debug(f"  Response IntegrityId: {resp_integrity_id}")
-
-        resp_payload = response[resp_offset:]
-        logger.debug(f"  Response payload ({len(resp_payload)} bytes): {resp_payload.hex(' ')}")
-
-        # Check for trailer bytes after data_length
-        trailer = response_frame[consumed + data_length :]
-        if trailer:
-            logger.debug(f"  Trailer ({len(trailer)} bytes): {trailer.hex(' ')}")
-
-        return resp_payload
+        pass
 
     def _init_ssl(self) -> None:
         """Send InitSSL request to prepare the connection.
@@ -554,44 +252,7 @@ class S7CommPlusConnection:
 
         Reference: thomas-v2/S7CommPlusDriver InitSslRequest
         """
-        seq_num = self._next_sequence_number()
-
-        # InitSSL request: header + padding
-        request = struct.pack(
-            ">BHHHHIB",
-            Opcode.REQUEST,
-            0x0000,  # Reserved
-            FunctionCode.INIT_SSL,
-            0x0000,  # Reserved
-            seq_num,
-            0x00000000,  # No session yet
-            0x30,  # Transport flags (0x30 for InitSSL)
-        )
-        # Trailing padding
-        request += struct.pack(">I", 0)
-
-        # Wrap in S7CommPlus frame header + trailer
-        frame = encode_header(ProtocolVersion.V1, len(request)) + request
-        frame += struct.pack(">BBH", 0x72, ProtocolVersion.V1, 0x0000)
-
-        logger.debug(f"=== InitSSL === sending ({len(frame)} bytes): {frame.hex(' ')}")
-        self._iso_conn.send_data(frame)
-
-        # Receive InitSSL response
-        response_frame = self._iso_conn.receive_data()
-        logger.debug(f"=== InitSSL === received ({len(response_frame)} bytes): {response_frame.hex(' ')}")
-
-        # Parse S7CommPlus frame header
-        version, data_length, consumed = decode_header(response_frame)
-        response = response_frame[consumed:]
-
-        if len(response) < 14:
-            from snap7.error import S7ConnectionError
-
-            raise S7ConnectionError("InitSSL response too short")
-
-        logger.debug(f"InitSSL response: version=V{version}, data_length={data_length}")
-        logger.debug(f"InitSSL response body ({len(response)} bytes): {response.hex(' ')}")
+        pass
 
     def _create_session(self) -> None:
         """Send CreateObject request to establish an S7CommPlus session.
@@ -601,102 +262,7 @@ class S7CommPlusConnection:
 
         Reference: thomas-v2/S7CommPlusDriver CreateObjectRequest.SetNullServerSessionData()
         """
-        seq_num = self._next_sequence_number()
-
-        # Build CreateObject request header
-        request = struct.pack(
-            ">BHHHHIB",
-            Opcode.REQUEST,
-            0x0000,
-            FunctionCode.CREATE_OBJECT,
-            0x0000,
-            seq_num,
-            ObjectId.OBJECT_NULL_SERVER_SESSION,  # SessionId = 288 for initial setup
-            0x36,  # Transport flags
-        )
-
-        # RequestId: ObjectServerSessionContainer (285)
-        request += struct.pack(">I", ObjectId.OBJECT_SERVER_SESSION_CONTAINER)
-
-        # RequestValue: ValueUDInt(0) = DatatypeFlags(0x00) + Datatype.UDInt(0x04) + VLQ(0)
-        request += bytes([0x00, DataType.UDINT]) + encode_uint32_vlq(0)
-
-        # Unknown padding (always 0)
-        request += struct.pack(">I", 0)
-
-        # RequestObject: PObject for NullServerSession
-        # StartOfObject
-        request += bytes([ElementID.START_OF_OBJECT])
-        # RelationId: GetNewRIDOnServer (211)
-        request += struct.pack(">I", ObjectId.GET_NEW_RID_ON_SERVER)
-        # ClassId: ClassServerSession (287), VLQ encoded
-        request += encode_uint32_vlq(ObjectId.CLASS_SERVER_SESSION)
-        # ClassFlags: 0
-        request += encode_uint32_vlq(0)
-        # AttributeId: None (0)
-        request += encode_uint32_vlq(0)
-
-        # Attribute: ServerSessionClientRID (300) = RID 0x80c3c901
-        request += bytes([ElementID.ATTRIBUTE])
-        request += encode_uint32_vlq(ObjectId.SERVER_SESSION_CLIENT_RID)
-        request += encode_typed_value(DataType.RID, 0x80C3C901)
-
-        # Nested object: ClassSubscriptions
-        request += bytes([ElementID.START_OF_OBJECT])
-        request += struct.pack(">I", ObjectId.GET_NEW_RID_ON_SERVER)
-        request += encode_uint32_vlq(ObjectId.CLASS_SUBSCRIPTIONS)
-        request += encode_uint32_vlq(0)  # ClassFlags
-        request += encode_uint32_vlq(0)  # AttributeId
-        request += bytes([ElementID.TERMINATING_OBJECT])
-
-        # End outer object
-        request += bytes([ElementID.TERMINATING_OBJECT])
-
-        # Trailing padding
-        request += struct.pack(">I", 0)
-
-        # Wrap in S7CommPlus frame header + trailer
-        frame = encode_header(ProtocolVersion.V1, len(request)) + request
-        # S7CommPlus trailer (end-of-frame marker)
-        frame += struct.pack(">BBH", 0x72, ProtocolVersion.V1, 0x0000)
-
-        logger.debug(f"=== CreateObject === sending ({len(frame)} bytes): {frame.hex(' ')}")
-        self._iso_conn.send_data(frame)
-
-        # Receive response
-        response_frame = self._iso_conn.receive_data()
-        logger.debug(f"=== CreateObject === received ({len(response_frame)} bytes): {response_frame.hex(' ')}")
-
-        # Parse S7CommPlus frame header
-        version, data_length, consumed = decode_header(response_frame)
-        response = response_frame[consumed:]
-
-        logger.debug(f"CreateObject response: version=V{version}, data_length={data_length}")
-        logger.debug(f"CreateObject response body ({len(response)} bytes): {response.hex(' ')}")
-
-        if len(response) < 14:
-            from snap7.error import S7ConnectionError
-
-            raise S7ConnectionError("CreateObject response too short")
-
-        # Extract session ID from response header
-        self._session_id = struct.unpack_from(">I", response, 9)[0]
-        self._protocol_version = version
-
-        # Parse and log the full response header
-        resp_opcode = response[0]
-        resp_func = struct.unpack_from(">H", response, 3)[0]
-        resp_seq = struct.unpack_from(">H", response, 7)[0]
-        resp_transport = response[13]
-        logger.debug(
-            f"CreateObject response header: opcode=0x{resp_opcode:02X} function=0x{resp_func:04X} "
-            f"seq={resp_seq} session=0x{self._session_id:08X} transport=0x{resp_transport:02X}"
-        )
-        logger.debug(f"CreateObject response payload: {response[14:].hex(' ')}")
-        logger.debug(f"Session created: id=0x{self._session_id:08X} ({self._session_id}), version=V{version}")
-
-        # Parse response payload to extract ServerSessionVersion
-        self._parse_create_object_response(response[14:])
+        pass
 
     def _parse_create_object_response(self, payload: bytes) -> None:
         """Parse CreateObject response payload to extract ServerSessionVersion.
@@ -708,74 +274,7 @@ class S7CommPlusConnection:
         Args:
             payload: Response payload after the 14-byte response header
         """
-        offset = 0
-        while offset < len(payload):
-            tag = payload[offset]
-
-            if tag == ElementID.ATTRIBUTE:
-                offset += 1
-                if offset >= len(payload):
-                    break
-                attr_id, consumed = decode_uint32_vlq(payload, offset)
-                offset += consumed
-
-                if attr_id == ObjectId.SERVER_SESSION_VERSION:
-                    # Next bytes are the typed value: flags + datatype + VLQ value
-                    if offset + 2 > len(payload):
-                        break
-                    _flags = payload[offset]
-                    datatype = payload[offset + 1]
-                    offset += 2
-                    if datatype == DataType.UDINT:
-                        value, consumed = decode_uint32_vlq(payload, offset)
-                        offset += consumed
-                        self._server_session_version = value
-                        logger.info(f"ServerSessionVersion = {value}")
-                        return
-                    elif datatype == DataType.DWORD:
-                        value, consumed = decode_uint32_vlq(payload, offset)
-                        offset += consumed
-                        self._server_session_version = value
-                        logger.info(f"ServerSessionVersion = {value}")
-                        return
-                    else:
-                        # Skip unknown type - try to continue scanning
-                        logger.debug(f"ServerSessionVersion has unexpected type {datatype:#04x}")
-                else:
-                    # Skip this attribute's value - we don't parse it, just advance
-                    # Try to skip the typed value (flags + datatype + value)
-                    if offset + 2 > len(payload):
-                        break
-                    _flags = payload[offset]
-                    datatype = payload[offset + 1]
-                    offset += 2
-                    offset = self._skip_typed_value(payload, offset, datatype, _flags)
-
-            elif tag == ElementID.START_OF_OBJECT:
-                offset += 1
-                # Skip RelationId (4 bytes fixed) + ClassId (VLQ) + ClassFlags (VLQ) + AttributeId (VLQ)
-                if offset + 4 > len(payload):
-                    break
-                offset += 4  # RelationId
-                _, consumed = decode_uint32_vlq(payload, offset)
-                offset += consumed  # ClassId
-                _, consumed = decode_uint32_vlq(payload, offset)
-                offset += consumed  # ClassFlags
-                _, consumed = decode_uint32_vlq(payload, offset)
-                offset += consumed  # AttributeId
-
-            elif tag == ElementID.TERMINATING_OBJECT:
-                offset += 1
-
-            elif tag == 0x00:
-                # Null terminator / padding
-                offset += 1
-
-            else:
-                # Unknown tag - try to skip
-                offset += 1
-
-        logger.debug("ServerSessionVersion not found in CreateObject response")
+        pass
 
     def _skip_typed_value(self, data: bytes, offset: int, datatype: int, flags: int) -> int:
         """Skip over a typed value in the PObject tree.
@@ -783,66 +282,7 @@ class S7CommPlusConnection:
         Best-effort: advances offset past common value types.
         Returns new offset.
         """
-        is_array = bool(flags & 0x10)
-
-        if is_array:
-            if offset >= len(data):
-                return offset
-            count, consumed = decode_uint32_vlq(data, offset)
-            offset += consumed
-            # For fixed-size types, skip count * size
-            elem_size = _element_size(datatype)
-            if elem_size > 0:
-                offset += count * elem_size
-            else:
-                # Variable-length: skip each VLQ element
-                for _ in range(count):
-                    if offset >= len(data):
-                        break
-                    _, consumed = decode_uint32_vlq(data, offset)
-                    offset += consumed
-            return offset
-
-        if datatype == DataType.NULL:
-            return offset
-        elif datatype in (DataType.BOOL, DataType.USINT, DataType.BYTE, DataType.SINT):
-            return offset + 1
-        elif datatype in (DataType.UINT, DataType.WORD, DataType.INT):
-            return offset + 2
-        elif datatype in (DataType.UDINT, DataType.DWORD, DataType.AID, DataType.DINT):
-            _, consumed = decode_uint32_vlq(data, offset)
-            return offset + consumed
-        elif datatype in (DataType.ULINT, DataType.LWORD, DataType.LINT):
-            _, consumed = decode_uint64_vlq(data, offset)
-            return offset + consumed
-        elif datatype == DataType.REAL:
-            return offset + 4
-        elif datatype == DataType.LREAL:
-            return offset + 8
-        elif datatype == DataType.TIMESTAMP:
-            return offset + 8
-        elif datatype == DataType.TIMESPAN:
-            _, consumed = decode_uint64_vlq(data, offset)  # int64 VLQ
-            return offset + consumed
-        elif datatype == DataType.RID:
-            return offset + 4
-        elif datatype in (DataType.BLOB, DataType.WSTRING):
-            length, consumed = decode_uint32_vlq(data, offset)
-            return offset + consumed + length
-        elif datatype == DataType.STRUCT:
-            count, consumed = decode_uint32_vlq(data, offset)
-            offset += consumed
-            for _ in range(count):
-                if offset + 2 > len(data):
-                    break
-                sub_flags = data[offset]
-                sub_type = data[offset + 1]
-                offset += 2
-                offset = self._skip_typed_value(data, offset, sub_type, sub_flags)
-            return offset
-        else:
-            # Unknown type - can't skip reliably
-            return offset
+        pass
 
     def _setup_session(self) -> bool:
         """Send SetMultiVariables to echo ServerSessionVersion back to the PLC.
@@ -856,111 +296,15 @@ class S7CommPlusConnection:
 
         Reference: thomas-v2/S7CommPlusDriver SetSessionSetupData
         """
-        if self._server_session_version is None:
-            return False
-
-        seq_num = self._next_sequence_number()
-
-        # Build SetMultiVariables request
-        request = struct.pack(
-            ">BHHHHIB",
-            Opcode.REQUEST,
-            0x0000,
-            FunctionCode.SET_MULTI_VARIABLES,
-            0x0000,
-            seq_num,
-            self._session_id,
-            0x36,  # Transport flags
-        )
-
-        payload = bytearray()
-        # InObjectId = session ID (tells PLC which object we're writing to)
-        payload += struct.pack(">I", self._session_id)
-        # Item count = 1
-        payload += encode_uint32_vlq(1)
-        # Total address field count = 1 (just the attribute ID)
-        payload += encode_uint32_vlq(1)
-        # Address: attribute ID = ServerSessionVersion (306) as VLQ
-        payload += encode_uint32_vlq(ObjectId.SERVER_SESSION_VERSION)
-        # Value: ItemNumber = 1 (VLQ)
-        payload += encode_uint32_vlq(1)
-        # PValue: flags=0x00, type=UDInt, VLQ-encoded value
-        payload += bytes([0x00, DataType.UDINT])
-        payload += encode_uint32_vlq(self._server_session_version)
-        # Fill byte
-        payload += bytes([0x00])
-        # ObjectQualifier
-        payload += encode_object_qualifier()
-        # Trailing padding
-        payload += struct.pack(">I", 0)
-
-        request += bytes(payload)
-
-        # Wrap in S7CommPlus frame
-        frame = encode_header(self._protocol_version, len(request)) + request
-        frame += struct.pack(">BBH", 0x72, self._protocol_version, 0x0000)
-
-        logger.debug(f"=== SetupSession === sending ({len(frame)} bytes): {frame.hex(' ')}")
-        self._iso_conn.send_data(frame)
-
-        # Receive response
-        response_frame = self._iso_conn.receive_data()
-        logger.debug(f"=== SetupSession === received ({len(response_frame)} bytes): {response_frame.hex(' ')}")
-
-        version, data_length, consumed = decode_header(response_frame)
-        response = response_frame[consumed : consumed + data_length]
-
-        if len(response) < 14:
-            from snap7.error import S7ConnectionError
-
-            raise S7ConnectionError("SetupSession response too short")
-
-        resp_func = struct.unpack_from(">H", response, 3)[0]
-        logger.debug(f"SetupSession response: function=0x{resp_func:04X}")
-
-        # Parse return value from payload
-        resp_payload = response[14:]
-        if len(resp_payload) >= 1:
-            return_value, _ = decode_uint64_vlq(resp_payload, 0)
-            if return_value != 0:
-                logger.warning(f"SetupSession: PLC returned error {return_value}")
-                return False
-            else:
-                logger.info("Session setup completed successfully")
-                return True
-        return False
+        pass
 
     def _delete_session(self) -> None:
         """Send DeleteObject to close the session."""
-        seq_num = self._next_sequence_number()
-
-        request = struct.pack(
-            ">BHHHHIB",
-            Opcode.REQUEST,
-            0x0000,
-            FunctionCode.DELETE_OBJECT,
-            0x0000,
-            seq_num,
-            self._session_id,
-            0x36,
-        )
-        request += struct.pack(">I", 0)
-
-        frame = encode_header(self._protocol_version, len(request)) + request
-        frame += struct.pack(">BBH", 0x72, self._protocol_version, 0x0000)
-        self._iso_conn.send_data(frame)
-
-        # Best-effort receive
-        try:
-            self._iso_conn.receive_data()
-        except Exception:
-            pass
+        pass
 
     def _next_sequence_number(self) -> int:
         """Get next sequence number and increment."""
-        seq = self._sequence_number
-        self._sequence_number = (self._sequence_number + 1) & 0xFFFF
-        return seq
+        pass
 
     def _activate_tls(
         self,
@@ -979,35 +323,7 @@ class S7CommPlusConnection:
             tls_key: Path to client private key (PEM)
             tls_ca: Path to CA certificate for PLC verification (PEM)
         """
-        ctx = self._setup_ssl_context(
-            cert_path=tls_cert,
-            key_path=tls_key,
-            ca_path=tls_ca,
-        )
-
-        # Wrap the raw TCP socket used by ISOTCPConnection
-        raw_socket = self._iso_conn.socket
-        if raw_socket is None:
-            from snap7.error import S7ConnectionError
-
-            raise S7ConnectionError("Cannot activate TLS: no TCP socket")
-
-        self._ssl_socket = ctx.wrap_socket(raw_socket, server_hostname=self.host)
-
-        # Replace the socket in ISOTCPConnection so all subsequent
-        # send_data/receive_data calls go through TLS
-        self._iso_conn.socket = self._ssl_socket
-        self._tls_active = True
-
-        # Extract OMS exporter secret for legitimation key derivation
-        try:
-            self._oms_secret = self._ssl_socket.export_keying_material("EXPERIMENTAL_OMS", 32, None)
-            logger.debug("OMS exporter secret extracted from TLS session")
-        except (AttributeError, ssl.SSLError) as e:
-            logger.warning(f"Could not extract OMS exporter secret: {e}")
-            self._oms_secret = None
-
-        logger.info("TLS 1.3 activated on COTP connection")
+        pass
 
     def _setup_ssl_context(
         self,
@@ -1025,24 +341,7 @@ class S7CommPlusConnection:
         Returns:
             Configured SSLContext
         """
-        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ctx.minimum_version = ssl.TLSVersion.TLSv1_3
-
-        # TLS 1.3 ciphersuites are configured differently from TLS 1.2
-        if hasattr(ctx, "set_ciphersuites"):
-            ctx.set_ciphersuites("TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256")
-        # If set_ciphersuites not available, TLS 1.3 uses its mandatory defaults
-
-        if cert_path and key_path:
-            ctx.load_cert_chain(cert_path, key_path)
-
-        if ca_path:
-            ctx.load_verify_locations(ca_path)
-        else:
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-
-        return ctx
+        pass
 
     def __enter__(self) -> "S7CommPlusConnection":
         return self

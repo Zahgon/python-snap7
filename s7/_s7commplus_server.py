@@ -149,9 +149,7 @@ class DataBlock:
 
     def write(self, offset: int, data: bytes) -> None:
         """Write bytes to the data block."""
-        with self.lock:
-            end = min(offset + len(data), len(self.data))
-            self.data[offset:end] = data[: end - offset]
+        pass
 
     def read_variable(self, name: str) -> tuple[int, bytes]:
         """Read a named variable.
@@ -260,53 +258,11 @@ class S7CommPlusServer:
             tls_key: Path to server private key (PEM)
             tls_ca: Path to CA certificate for client verification (PEM)
         """
-        if self._running:
-            raise RuntimeError("Server is already running")
-
-        self._use_tls = use_tls
-        if use_tls:
-            if not tls_cert or not tls_key:
-                raise ValueError("TLS requires tls_cert and tls_key")
-            self._ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            self._ssl_context.minimum_version = ssl.TLSVersion.TLSv1_3
-            self._ssl_context.load_cert_chain(tls_cert, tls_key)
-            if tls_ca:
-                self._ssl_context.load_verify_locations(tls_ca)
-                self._ssl_context.verify_mode = ssl.CERT_REQUIRED
-            else:
-                self._ssl_context.verify_mode = ssl.CERT_NONE
-
-        self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self._server_socket.settimeout(1.0)
-        self._server_socket.bind((host, port))
-        self._server_socket.listen(5)
-
-        self._running = True
-        self._server_thread = threading.Thread(target=self._server_loop, daemon=True, name="s7commplus-server")
-        self._server_thread.start()
-        logger.info(f"S7CommPlus server started on {host}:{port} (TLS={use_tls}, V{self._protocol_version})")
+        pass
 
     def stop(self) -> None:
         """Stop the server."""
-        self._running = False
-
-        if self._server_socket:
-            try:
-                self._server_socket.close()
-            except Exception:
-                pass
-            self._server_socket = None
-
-        if self._server_thread:
-            self._server_thread.join(timeout=5.0)
-            self._server_thread = None
-
-        for t in self._client_threads:
-            t.join(timeout=2.0)
-        self._client_threads.clear()
-
-        logger.info("S7CommPlus server stopped")
+        pass
 
     def _server_loop(self) -> None:
         """Main server accept loop."""
@@ -401,13 +357,7 @@ class S7CommPlusServer:
     @staticmethod
     def _recv_exact(sock: socket.socket, size: int) -> bytes:
         """Receive exactly the specified number of bytes."""
-        data = bytearray()
-        while len(data) < size:
-            chunk = sock.recv(size - len(data))
-            if not chunk:
-                raise ConnectionError("Connection closed")
-            data.extend(chunk)
-        return bytes(data)
+        pass
 
     def __enter__(self) -> "S7CommPlusServer":
         return self

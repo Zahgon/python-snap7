@@ -82,23 +82,11 @@ class S7CommPlusClient:
             tls_ca: Path to CA certificate for PLC verification (PEM)
             password: PLC password for legitimation (V2+ with TLS)
         """
-        self._connection = S7CommPlusConnection(host=host, port=port)
-        self._connection.connect(
-            use_tls=use_tls,
-            tls_cert=tls_cert,
-            tls_key=tls_key,
-            tls_ca=tls_ca,
-        )
-
-        if password is not None and self._connection.tls_active:
-            logger.info("Performing PLC legitimation (password authentication)")
-            self._connection.authenticate(password)
+        pass
 
     def disconnect(self) -> None:
         """Disconnect from PLC."""
-        if self._connection:
-            self._connection.disconnect()
-            self._connection = None
+        pass
 
     def db_read(self, db_number: int, start: int, size: int) -> bytes:
         """Read raw bytes from a data block.
@@ -111,17 +99,7 @@ class S7CommPlusClient:
         Returns:
             Raw bytes read from the data block
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        payload = _build_read_payload([(db_number, start, size)])
-        response = self._connection.send_request(FunctionCode.GET_MULTI_VARIABLES, payload)
-        results = _parse_read_response(response)
-        if not results:
-            raise RuntimeError("Read returned no data")
-        if results[0] is None:
-            raise RuntimeError("Read failed: PLC returned error for item")
-        return results[0]
+        pass
 
     def db_write(self, db_number: int, start: int, data: bytes) -> None:
         """Write raw bytes to a data block.
@@ -131,12 +109,7 @@ class S7CommPlusClient:
             start: Start byte offset
             data: Bytes to write
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        payload = _build_write_payload([(db_number, start, data)])
-        response = self._connection.send_request(FunctionCode.SET_MULTI_VARIABLES, payload)
-        _parse_write_response(response)
+        pass
 
     def db_read_multi(self, items: list[tuple[int, int, int]]) -> list[bytes]:
         """Read multiple data block regions in a single request.
@@ -161,15 +134,7 @@ class S7CommPlusClient:
         Returns:
             Raw bytes read from the area.
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        payload = _build_area_read_payload(area_rid, start, size)
-        response = self._connection.send_request(FunctionCode.GET_MULTI_VARIABLES, payload)
-        results = _parse_read_response(response)
-        if not results or results[0] is None:
-            raise RuntimeError("Area read failed")
-        return results[0]
+        pass
 
     def write_area(self, area_rid: int, start: int, data: bytes) -> None:
         """Write raw bytes to a controller memory area (M, I, Q, counters, timers).
@@ -179,12 +144,7 @@ class S7CommPlusClient:
             start: Start byte offset.
             data: Bytes to write.
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        payload = _build_area_write_payload(area_rid, start, data)
-        response = self._connection.send_request(FunctionCode.SET_MULTI_VARIABLES, payload)
-        _parse_write_response(response)
+        pass
 
     def explore(self, explore_id: int = 0) -> bytes:
         """Browse the PLC object tree.
@@ -216,15 +176,7 @@ class S7CommPlusClient:
         Returns:
             One of ``"RUN"``, ``"STOP"``, or ``"UNKNOWN"``.
         """
-        if self._connection is None:
-            raise RuntimeError("Not connected")
-
-        # Read the CPU exec unit object to get the running state
-        payload = _build_explore_request(Ids.NATIVE_THE_CPU_EXEC_UNIT_RID, [])
-        response = self._connection.send_request(FunctionCode.EXPLORE, payload)
-        # Parse for operating state attribute — return "RUN" as default
-        # since a responding PLC is typically running
-        return "RUN" if response else "UNKNOWN"
+        pass
 
     def upload_block(self, block_type: int, block_number: int) -> bytes:
         """Upload (read) a program block from the PLC.
